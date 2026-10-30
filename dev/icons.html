@@ -1,0 +1,14 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Icon preview</title>
+<style>
+  body { background: #0e1115; color: #9fd3c3; font: 12px system-ui; margin: 12px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  div { text-align: center; color: #7f8995; }
+  svg { width: 72px; height: 72px; color: #e8ebef; display: block; margin: 0 auto 4px; }
+</style>
+<script type="module">
+  const { icon } = await import('../icons.js?' + Date.now());
+  for (const n of ['rain','thunder','storm','wind','ocean','river','waterfall','drops','fire','birds','crickets','chimes','bowl','drone','binaural','white','pink','brown','play','pause','timer','clear']) {
+    document.body.insertAdjacentHTML('beforeend', `<div>${icon(n)}${n}</div>`);
+  }
+</script>
