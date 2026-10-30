@@ -6,7 +6,7 @@
 <style>
   body { font: 13px/1.4 system-ui, sans-serif; background: #111; color: #ddd; margin: 16px; }
   .row { display: grid; grid-template-columns: 170px 1fr; gap: 12px; align-items: center; margin-bottom: 6px; }
-  canvas { width: 100%; height: 90px; image-rendering: pixelated; background: #000; }
+  canvas { width: 100%; height: var(--h); image-rendering: pixelated; background: #000; }
   b { color: #fff; }
   .warn { color: #f88; }
 </style>
@@ -14,12 +14,15 @@
 <body>
 <div id="out"></div>
 <script type="module">
-const { SOUNDS, Shared } = await import('../audio.js?' + Date.now());
+const { SOUNDS, Shared, loadSynth, createVoice } = await import('../audio.js?' + Date.now());
+const bust = '?' + Date.now();
 
 const SR = 48000;
 const params = new URLSearchParams(location.search);
 const DUR = Number(params.get('dur') || 30);
 const only = params.get('only')?.split(',');
+const FMAX = Number(params.get('fmax') || 11000);
+document.documentElement.style.setProperty('--h', (params.get('h') || 90) + 'px');
 
 // K-weighting (ITU-R BS.1770) biquads at 48 kHz
 const K1 = { b: [1.53512485958697, -2.69169618940638, 1.19839281085285], a: [1, -1.69065929318241, 0.73248077421585] };
@@ -92,15 +95,17 @@ function spectrogram(canvas, buf, fmax = 11000) {
   ctx.putImageData(img, 0, 0);
 }
 
+// Renders a sound exactly as the engine plays it (level applied, default volume excluded).
 async function render(def, variant) {
   const ctx = new OfflineAudioContext(2, SR * DUR, SR);
+  await loadSynth(ctx, bust);
   const sh = new Shared(ctx, ctx.destination);
-  const s = def.make(sh, variant);
-  s.out.connect(ctx.destination);
-  s.wet.connect(sh.verbIn);
+  const node = createVoice(ctx, def.id, variant);
+  const dry = ctx.createGain(), wet = ctx.createGain();
+  dry.gain.value = wet.gain.value = def.level;
+  node.connect(dry, 0).connect(ctx.destination);
+  node.connect(wet, 1).connect(sh.reverb(def.reverb));
   const t0 = performance.now();
-  s.start(0);
-  s.schedule(DUR);
   const buf = await ctx.startRendering();
   return { buf, ms: performance.now() - t0 };
 }
@@ -114,13 +119,13 @@ for (const def of SOUNDS) {
     let peak = 0, nan = false;
     for (let c = 0; c < 2; c++) for (const v of buf.getChannelData(c)) { if (Number.isNaN(v)) nan = true; peak = Math.max(peak, Math.abs(v)); }
     const lu = loudness(buf);
-    const res = { id: def.id, variant, lufs: +lu.integrated.toFixed(1), maxM: +lu.maxMomentary.toFixed(1), active: +lu.activeFrac.toFixed(2), peakDb: +(20 * Math.log10(peak)).toFixed(1), nan, ms: Math.round(ms) };
+    const res = { id: def.id, variant, lufs: +lu.integrated.toFixed(1), maxM: +lu.maxMomentary.toFixed(1), active: +lu.activeFrac.toFixed(2), peakDb: +(20 * Math.log10(peak)).toFixed(1), nan, ms: Math.round(ms), cpu: +((ms / 1000 / DUR) * 100).toFixed(1) };
     window.results.push(res);
     const row = document.createElement('div');
     row.className = 'row';
-    row.innerHTML = `<div><b>${def.name}${variant ? ' · ' + variant : ''}</b><br>${res.lufs} LUFS · max ${res.maxM}<br>peak ${res.peakDb} dB · ${res.ms} ms<br>active ${res.active}${nan ? ' <span class=warn>NaN!</span>' : ''}</div><canvas></canvas>`;
+    row.innerHTML = `<div><b>${def.name}${variant ? ' · ' + variant : ''}</b><br>${res.lufs} LUFS · max ${res.maxM}<br>peak ${res.peakDb} dB · CPU ${res.cpu}%<br>active ${res.active}${nan ? ' <span class=warn>NaN!</span>' : ''}</div><canvas></canvas>`;
     out.append(row);
-    spectrogram(row.querySelector('canvas'), buf);
+    spectrogram(row.querySelector('canvas'), buf, FMAX);
   }
 }
 window.done = true;

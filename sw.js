@@ -1,11 +1,12 @@
 // Network first, so updates show up immediately; the cache makes the app work offline.
-const CACHE = 'meditation-sounds-v1';
+const CACHE = 'meditation-sounds-v2';
 const ASSETS = [
   './',
   'index.html',
   'style.css',
   'app.js',
   'audio.js',
+  'synth.js',
   'icons.js',
   'manifest.webmanifest',
   'icons/icon.svg',
