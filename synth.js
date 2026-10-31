@@ -249,7 +249,7 @@ class Ping {
     this.g = Math.exp(-damping / SR);
     this.a = amp;
     this.k = 0;
-    this.kInc = 1 / samples(0.0004);
+    this.kInc = 1 / samples(Math.max(0.0004, 1 / f0));
     this.len = Math.min(samples(7 / damping), samples(1.5));
     setPan(this, pan, wet);
     return this;
@@ -961,13 +961,15 @@ class River extends Gen {
     this.sources = [-0.75, -0.25, 0.3, 0.8].map((p) => ({
       pan: p + range(-0.1, 0.1),
       burst: new Wander(0.06, 0.5, 0, 1),
-      fmin: range(320, 520),
-      fmax: range(2500, 4500),
+      fmin: range(240, 380),
+      fmax: range(1500, 2400),
       wet: range(0.08, 0.2),
-      clock: new Clock(full ? range(450, 700) : range(300, 550)),
+      clock: new Clock(full ? range(400, 650) : range(150, 280)),
     }));
-    this.flowAmt = full ? 0.55 : 0.2;
-    this.lowAmt = full ? 0.5 : 0.12;
+    // both variants come out about equally loud; babbling is mostly bubbles
+    this.flowAmt = full ? 0.55 : 0.16;
+    this.lowAmt = full ? 0.5 : 0.14;
+    this.bubbleAmp = full ? 0.14 : 0.3;
     this.pink = [new Pink(), new Pink()];
     this.flow = [new SVF(700, 0.5), new SVF(700, 0.5)];
     this.flowMod = new Wander(0.5, 3, 0.6, 1);
@@ -992,11 +994,12 @@ class River extends Gen {
       s.clock.run(n, (o) => {
         if (!chance(accept)) return;
         if (chance(0.012)) {
-          bubble(this.bubbles, o, range(160, 340), range(0.12, 0.25), s.pan, s.wet, 0.18); // a deep gloop
+          bubble(this.bubbles, o, range(160, 340), this.bubbleAmp * range(1.5, 3), s.pan, s.wet, 0.18); // a deep gloop
           return;
         }
-        const f0 = s.fmin * (s.fmax / s.fmin) ** (rnd() ** 0.7);
-        bubble(this.bubbles, o, f0, 0.07 * (s.fmin / f0) ** 0.6 * range(0.3, 1), s.pan + range(-0.15, 0.15), s.wet, range(0.05, 0.15));
+        // mostly mid-sized bubbles (the audible 'blups'), fewer tiny ones
+        const f0 = s.fmin * (s.fmax / s.fmin) ** (rnd() ** 1.6);
+        bubble(this.bubbles, o, f0, this.bubbleAmp * (s.fmin / f0) ** 0.3 * range(0.3, 1), s.pan + range(-0.15, 0.15), s.wet, range(0.06, 0.16));
       });
     }
     this.bubbles.render(L, R, WL, WR, n);
