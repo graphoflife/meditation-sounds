@@ -167,6 +167,14 @@ clearBtn.innerHTML = `${icon('clear')}<span>Clear</span>`;
 const timerLabel = timerBtn.querySelector('span');
 
 const paintSlider = (el) => el.style.setProperty('--p', `${el.value * 100}%`);
+const tileOf = (id) => grid.querySelector(`[data-id="${id}"]`);
+
+// Recordings download on first use: the tile pulses until the sound starts.
+engine.onLoading = (id, loading) => tileOf(id)?.classList.toggle('loading', loading);
+engine.onError = (id) => {
+  toggle(id);
+  statusEl.textContent = `Couldn't load ${byId[id].name}. Check your connection.`;
+};
 
 const clock = (ms) => {
   const s = Math.ceil(ms / 1000);

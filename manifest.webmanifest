@@ -1,7 +1,7 @@
 {
   "name": "Meditation Sounds",
   "short_name": "Meditation",
-  "description": "Procedurally generated ambient sounds for meditation.",
+  "description": "Mix real nature recordings for meditation.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
