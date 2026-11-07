@@ -5,14 +5,18 @@
 const SR = sampleRate;
 const TAU = 2 * Math.PI;
 const white = () => Math.random() * 2 - 1;
+const smooth = (x) => x * x * (3 - 2 * x);
 
 class OnePole {
   constructor(fc) {
     this.y = 0;
     this.a = 1 - Math.exp((-TAU * fc) / SR);
   }
+  lp(x) {
+    return (this.y += this.a * (x - this.y));
+  }
   hp(x) {
-    return x - (this.y += this.a * (x - this.y));
+    return x - this.lp(x);
   }
 }
 
@@ -35,28 +39,64 @@ class Pink {
   }
 }
 
+// Shades of brown noise: the same random walk, darkened by extra low-pass filtering or
+// lightened with some pink noise. Gains keep every shade about equally loud (LUFS).
+const BROWN = {
+  Classic: { gain: 1 },
+  Deep: { lp: 180, gain: 1.93 },
+  Smooth: { lp: 650, gain: 1.35 },
+  Light: { pink: 0.5, gain: 0.7 },
+  Waves: { pink: 0.2, swell: true, gain: 1.19 },
+};
+
 class Brown {
-  constructor() {
+  constructor(shade) {
+    this.shade = shade;
     this.l = 0;
     this.dc = new OnePole(25);
+    this.lp = shade.lp ? [new OnePole(shade.lp), new OnePole(shade.lp)] : null;
+    this.pink = shade.pink ? new Pink() : null;
   }
   next() {
     this.l = (this.l + 0.02 * white()) / 1.02;
-    return this.dc.hp(this.l * 3.5);
+    let x = this.dc.hp(this.l * 3.5);
+    if (this.lp) x = this.lp[1].lp(this.lp[0].lp(x));
+    if (this.pink) x += this.pink.next() * this.shade.pink;
+    return x * this.shade.gain;
+  }
+}
+
+// Slow swells like distant surf: each one rises over 40% of its length and ebbs over
+// the rest, with random lengths (7–14 s) and heights, so they never fall into a rhythm.
+class Swell {
+  constructor() {
+    this.t = this.len = 0;
+    this.h = 0;
+  }
+  next() {
+    if (++this.t >= this.len) {
+      this.t = 0;
+      this.len = Math.round((7 + Math.random() * 7) * SR);
+      this.h = 0.55 + Math.random() * 0.45;
+    }
+    const p = this.t / this.len;
+    return 0.3 + 0.7 * this.h * (p < 0.4 ? smooth(p / 0.4) : 1 - smooth((p - 0.4) / 0.6));
   }
 }
 
 const whiteSource = () => ({ next: () => white() * 0.4 });
 
 class Noise {
-  constructor(make) {
+  constructor(make, swell = null) {
     this.l = make();
     this.r = make();
+    this.swell = swell;
   }
   render(L, R) {
     for (let i = 0; i < L.length; i++) {
-      L[i] = this.l.next();
-      R[i] = this.r.next();
+      const g = this.swell ? this.swell.next() : 1;
+      L[i] = this.l.next() * g;
+      R[i] = this.r.next() * g;
     }
   }
 }
@@ -83,7 +123,10 @@ class Binaural {
 const GENERATORS = {
   white: () => new Noise(whiteSource),
   pink: () => new Noise(() => new Pink()),
-  brown: () => new Noise(() => new Brown()),
+  brown: (v) => {
+    const shade = BROWN[v] ?? BROWN.Classic;
+    return new Noise(() => new Brown(shade), shade.swell ? new Swell() : null);
+  },
   binaural: (v) => new Binaural(v),
 };
 

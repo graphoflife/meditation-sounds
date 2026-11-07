@@ -4,7 +4,8 @@ A minimal web app for mixing ambient sounds for meditation and sleep, built on r
 recordings released under CC0 (see [CREDITS.md](CREDITS.md)).
 
 **Sounds:** rain, thunder, storm, wind, ocean, river, waterfall, cave drips, campfire, birds,
-crickets, wind chimes, singing bowl, tanpura, binaural beats, and white, pink and brown noise.
+crickets, wind chimes, singing bowl, tanpura, binaural beats, and white, pink and brown noise
+(Classic, Deep, Smooth, Light and Waves).
 
 Tap a tile to turn a sound on, use its slider to set the volume, and mix as many as you like.
 Many tiles offer several recordings: tap the small label on the tile to switch. The sleep timer

@@ -99,7 +99,12 @@ export const SOUNDS = [
   },
   { id: 'white', name: 'White noise', config: { synth: true, level: 0.24 } },
   { id: 'pink', name: 'Pink noise', config: { synth: true, level: 0.295 } },
-  { id: 'brown', name: 'Brown noise', config: { synth: true, level: 0.684 } },
+  {
+    id: 'brown',
+    name: 'Brown noise',
+    variants: ['Classic', 'Deep', 'Smooth', 'Light', 'Waves'],
+    config: { synth: true, level: 0.684 },
+  },
 ];
 
 const BY_ID = Object.fromEntries(SOUNDS.map((s) => [s.id, s]));
